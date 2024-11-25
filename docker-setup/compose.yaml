@@ -1,0 +1,45 @@
+name: "spotify-clone-01"
+
+services:
+  service01:
+    build: "service01"
+    networks:
+      internet: {}
+      proxy:
+        aliases:
+          - service01-proxy
+
+  service02:
+    build: "service02"
+    networks:
+      - internet
+      - proxy
+    profiles:
+      - disabled
+
+  proxy01:
+    build:
+      context: "."
+      dockerfile: "proxy01/Dockerfile"
+    networks:
+      - internet
+      - proxy
+    ports:
+      - "9000:8080"
+
+  client01:
+    build: "client01"
+    networks:
+      - internet
+      - proxy
+    profiles:
+      - disabled
+
+networks:
+  internet:
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "false"
+  proxy:
+    internal: true
+  service:
+    internal: true

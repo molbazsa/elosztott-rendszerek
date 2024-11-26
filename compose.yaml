@@ -1,22 +1,6 @@
-name: "spotify-clone-01"
+name: "task-manager"
 
 services:
-  service01:
-    build: "service01"
-    networks:
-      internet: {}
-      proxy:
-        aliases:
-          - service01-proxy
-
-  service02:
-    build: "service02"
-    networks:
-      - internet
-      - proxy
-    profiles:
-      - disabled
-
   proxy01:
     build:
       context: "."
@@ -26,6 +10,32 @@ services:
       - proxy
     ports:
       - "9000:8080"
+
+  backend:
+    build: "backend"
+    networks:
+      internet: {}
+      proxy:
+        aliases:
+          - backend-proxy
+
+  service01:
+    build: "service01"
+    networks:
+      internet: {}
+      proxy:
+        aliases:
+          - service01-proxy
+    profiles:
+      - disabled
+
+  service02:
+    build: "service02"
+    networks:
+      - internet
+      - proxy
+    profiles:
+      - disabled
 
   client01:
     build: "client01"

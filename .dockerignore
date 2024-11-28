@@ -1,3 +1,9 @@
 *
+
 !frontend
-!proxy01
+
+frontend/dist
+frontend/.gitignore
+frontend/node_modules
+
+!proxy01/config

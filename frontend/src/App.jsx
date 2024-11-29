@@ -1,10 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [tasks, setTasks] = useState("")
+
+  useEffect(async () => {
+    // setTasks(
+    //   await fetch("http://localhost:9000/api/tasks?limit=1")
+    //     .then((res) => res.ok ? res.json() : "")
+    // );
+    fetch("http://localhost:9000/api/tasks?limit=1")
+    setTasks("hello")
+  }, [])
 
   return (
     <>
@@ -23,6 +33,9 @@ function App() {
         </button>
         <p>
           Edit <code>src/App.jsx</code> and save to test HMR
+        </p>
+        <p>
+          {tasks}
         </p>
       </div>
       <p className="read-the-docs">

@@ -2,10 +2,12 @@
 FROM node:23-alpine AS frontend-build
 USER node
 
-COPY --chown=node:node frontend/ /frontend/
-
 WORKDIR /frontend
+COPY --chown=node:node frontend/package.json .
+COPY --chown=node:node frontend/package-lock.json .
 RUN npm install
+
+COPY --chown=node:node frontend/ /frontend/
 RUN npm run build
 
 

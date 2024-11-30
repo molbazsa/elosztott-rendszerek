@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from enum import StrEnum
 
 from models.util import PartialModel
@@ -10,8 +10,8 @@ class TaskStatus(StrEnum):
     DONE = "done"
 
 class Task(BaseModel):
-    title: str
-    description: str
+    title: str = Field(..., min_length=1, description="The title of the task cannot be empty.")
+    description: str = Field(..., min_length=1, description="The description of the task cannot be empty.")
     assigned_user_id: str
     status: TaskStatus = TaskStatus.TO_DO
 

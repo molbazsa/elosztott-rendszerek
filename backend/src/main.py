@@ -69,7 +69,7 @@ async def patch_task(
     try:
         task = db.update_task(id, task_patch)
         requests.post("http://notifier-service-proxy:8000/notify", json={
-            "message": f"Task '{task.title}' has been updated."
+            "message": f"Task '{task.task.title}' has been updated."
         })
         return task
     except DBItemNotFoundError:
@@ -84,7 +84,7 @@ async def delete_task(
         task = db.read_task_by_id(id)
         db.delete_task(id)
         requests.post("http://notifier-service-proxy:8000/notify", json={
-            "message": f"Task '{task.title}' has been deleted."
+            "message": f"Task '{task.task.title}' has been deleted."
         })
         return {"message": "Task deleted successfully"}
     except DBItemNotFoundError:

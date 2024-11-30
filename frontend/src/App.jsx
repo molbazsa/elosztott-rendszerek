@@ -1,6 +1,20 @@
 import React, { useState, useEffect } from 'react';
 
+import { connectToWebSocket } from './websocket';
+
 const API_URL = "http://localhost:9000/api/tasks";
+
+const fetchTasks = async (setTasks) => {
+  try {
+    const response = await fetch(API_URL);
+    if (!response.ok) {
+      throw new Error("Failed to fetch tasks");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+  }
+};
 
 function App() {
   const [tasks, setTasks] = useState([]);
@@ -14,19 +28,15 @@ function App() {
 
   // Fetch tasks from the backend
   useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const response = await fetch(API_URL);
-        if (!response.ok) {
-          throw new Error("Failed to fetch tasks");
-        }
-        const data = await response.json();
-        setTasks(data);
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-      }
-    };
-    fetchTasks();
+    async function effect() {
+      connectToWebSocket(async () => {
+        const fetchedTasks = await fetchTasks();
+        setTasks(fetchedTasks)
+      });
+      const fetchedTasks = await fetchTasks();
+      setTasks(fetchedTasks)
+    }
+    effect();
   }, []);
 
   // Add a new task

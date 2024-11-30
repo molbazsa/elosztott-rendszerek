@@ -15,4 +15,4 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 COPY --chown=dkruser:dkruser src/ ./
 
 # Run the notification service
-CMD ["python", "main.py"]
+CMD ["python", "-m", "fastapi", "run", "main.py", "--port", "8000"]

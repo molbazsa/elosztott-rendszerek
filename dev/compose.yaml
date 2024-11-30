@@ -23,6 +23,11 @@ services:
         aliases:
           - backend-proxy
 
+  notifier-service:
+    extends:
+      file: ../compose.yaml
+      service: notifier-service
+
 networks:
   internet:
     driver_opts:

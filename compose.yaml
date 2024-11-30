@@ -38,6 +38,14 @@ services:
         aliases:
           - backend-proxy
 
+  notifier-service:
+    build: "notifier-service"
+    networks:
+      internet: {}
+      proxy:
+        aliases:
+          - notifier-service-proxy
+
   service01:
     build: "service01"
     networks:

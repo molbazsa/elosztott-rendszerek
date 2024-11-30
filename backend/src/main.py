@@ -1,4 +1,5 @@
 import uvicorn
+import requests
 from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from db import DBException, DBItemNotFoundError
@@ -29,7 +30,12 @@ db = DBConnection.connect()
 @router.post("/tasks")
 async def post_task(task: Task) -> TaskResponse:
     try:
-        return db.create_task(task)
+        response = db.create_task(task)
+        # Notify the notifier-service
+        requests.post("http://notifier-service-proxy:8000/notify", json={
+            "message": f"Task '{task.title}' has been created."
+        })
+        return response
     except DBException:
         raise HTTPException(status_code=500, detail="DB exception")
 
@@ -61,7 +67,11 @@ async def patch_task(
     task_patch: PartialTask,
 ) -> TaskResponse:
     try:
-        return db.update_task(id, task_patch)
+        task = db.update_task(id, task_patch)
+        requests.post("http://notifier-service-proxy:8000/notify", json={
+            "message": f"Task '{task.title}' has been updated."
+        })
+        return task
     except DBItemNotFoundError:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -71,7 +81,11 @@ async def delete_task(
     id: str,
 ) -> dict[str, str]:
     try:
+        task = db.read_task_by_id(id)
         db.delete_task(id)
+        requests.post("http://notifier-service-proxy:8000/notify", json={
+            "message": f"Task '{task.title}' has been deleted."
+        })
         return {"message": "Task deleted successfully"}
     except DBItemNotFoundError:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -82,4 +96,4 @@ app.include_router(router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
-    
+

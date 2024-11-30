@@ -1,8 +1,6 @@
 import uvicorn
-
 from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
 from db import DBException, DBItemNotFoundError
 from dependencies import DBConnection
 from models.task import Task, TaskResponse, PartialTask
@@ -21,7 +19,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["POST", "PATCH"],
+    allow_methods=["POST", "PATCH", "DELETE"],
     allow_headers=["Accept", "Accept-Language", "Content-Language", "Content-Type"],
 )
 
@@ -67,7 +65,21 @@ async def patch_task(
     except DBItemNotFoundError:
         raise HTTPException(status_code=404, detail="Task not found")
 
+# Delete a task
+@router.delete("/tasks/{id}")
+async def delete_task(
+    id: str,
+) -> dict[str, str]:
+    try:
+        db.delete_task(id)
+        return {"message": "Task deleted successfully"}
+    except DBItemNotFoundError:
+        raise HTTPException(status_code=404, detail="Task not found")
+    except DBException:
+        raise HTTPException(status_code=500, detail="DB exception")
+
 app.include_router(router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
+    

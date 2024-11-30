@@ -148,6 +148,22 @@ class MockDB(DB):
             task=self.tasks[id],
         )
 
+    def delete_task(self, id: str) -> None:
+        """
+        Deletes a task by its ID.
+        
+        Args:
+            id (str): The ID of the task to delete.
+        
+        Raises:
+            DBItemNotFoundError: If the task does not exist.
+        """
+        if id in self.tasks:
+            del self.tasks[id]
+        else:
+            raise DBItemNotFoundError("Task not found")
+
+
 
 class DBConnection(ABC):
     """

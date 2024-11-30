@@ -19,7 +19,7 @@ services:
         DKR_UID: 1000
         DKR_GID: 1000
     volumes:
-      - "./frontend:/frontend:ro"
+      - "./frontend:/frontend:rw"
       - "./frontend/package.json:/frontend/package.json:rw"
       - "./frontend/package-lock.json:/frontend/package-lock.json:rw"
       - "./frontend/docker_node_modules:/frontend/node_modules:rw"

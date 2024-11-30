@@ -1,0 +1,7 @@
+#!/bin/bash
+
+test "$(basename "$PWD")" = 'dev' && cd ..
+
+docker compose down \
+&& docker compose -f dev/compose.yaml up --build -d \
+&& docker compose -f dev/compose.yaml logs -f

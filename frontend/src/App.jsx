@@ -5,15 +5,16 @@ import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
-  const [tasks, setTasks] = useState("")
+  const [tasks, setTasks] = useState(<><br /></>)
 
-  useEffect(async () => {
-    // setTasks(
-    //   await fetch("http://localhost:9000/api/tasks?limit=1")
-    //     .then((res) => res.ok ? res.json() : "")
-    // );
-    fetch("http://localhost:9000/api/tasks?limit=1")
-    setTasks("hello")
+  useEffect(() => {
+    async function effect() {
+      setTasks(
+        await fetch("http://localhost:9000/api/tasks?limit=1")
+          .then((res) => res.ok ? res.text() : "")
+      );
+    }
+    effect();
   }, [])
 
   return (
@@ -31,9 +32,6 @@ function App() {
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
         </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
         <p>
           {tasks}
         </p>

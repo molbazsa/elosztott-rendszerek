@@ -11,6 +11,25 @@ services:
     ports:
       - "9000:8080"
 
+  frontend:
+    build:
+      context: "."
+      dockerfile: "frontend/Dockerfile"
+      args:
+        DKR_UID: 1000
+        DKR_GID: 1000
+    volumes:
+      - "./frontend:/frontend:ro"
+      - "./frontend/package.json:/frontend/package.json:rw"
+      - "./frontend/package-lock.json:/frontend/package-lock.json:rw"
+      - "./frontend/docker_node_modules:/frontend/node_modules:rw"
+    user: "1000:1000"
+    networks:
+      - internet
+      - proxy
+    ports:
+      - "9001:8080"
+
   backend:
     build: "backend"
     networks:

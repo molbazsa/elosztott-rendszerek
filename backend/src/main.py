@@ -1,3 +1,5 @@
+import uvicorn
+
 from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -12,6 +14,7 @@ router = APIRouter(
 
 origins = [
     "http://localhost:9000",
+    "http://localhost:9001",
 ]
 
 app.add_middleware(
@@ -65,3 +68,6 @@ async def patch_task(
         raise HTTPException(status_code=404, detail="Task not found")
 
 app.include_router(router)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)

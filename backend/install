@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if ! python3 -m venv --help 2>&1 > /dev/null; then
+    echo "python3-venv is not installed"
+    exit 1
+fi
+
+test "$(basename "$PWD")" = 'backend' && cd ..
+
+test ! -d .venv && python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/requirements.txt

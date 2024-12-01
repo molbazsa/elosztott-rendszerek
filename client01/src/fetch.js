@@ -73,3 +73,29 @@ async function updateTask(id) {
     return await fetch(`http://localhost:9000/api/tasks/${id}`, requestOptions)
         .then((res) => res.ok ? res.json() : res);
 }
+
+async function undo() {
+    const requestHeaders = new Headers();
+    requestHeaders.append("Content-Type", "application/json");
+
+    const requestOptions = {
+        method: "POST",
+        headers: requestHeaders,
+    };
+
+    return await fetch("http://localhost:9000/api/undo", requestOptions)
+        .then((res) => res.ok ? res.json() : res);
+}
+
+async function redo() {
+    const requestHeaders = new Headers();
+    requestHeaders.append("Content-Type", "application/json");
+
+    const requestOptions = {
+        method: "POST",
+        headers: requestHeaders,
+    };
+
+    return await fetch("http://localhost:9000/api/redo", requestOptions)
+        .then((res) => res.ok ? res.json() : res);
+}

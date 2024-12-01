@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from db import DBException, DBItemNotFoundError
 from dependencies import DBConnection
 from models.task import Task, TaskResponse, PartialTask
+from commands.command import CreateTaskCommand, UpdateTaskCommand, DeleteTaskCommand
+from commands.command_manager import CommandManager
 
 app = FastAPI()
 router = APIRouter(
@@ -25,19 +27,19 @@ app.add_middleware(
 )
 
 db = DBConnection.connect()
+command_manager = CommandManager(db)
 
-# Create a task
+# Create a task with undo/redo support
 @router.post("/tasks")
-async def post_task(task: Task) -> TaskResponse:
-    try:
-        response = db.create_task(task)
-        # Notify the notifier-service
-        requests.post("http://notifier-service-proxy:8000/notify", json={
-            "message": f"Task '{task.title}' has been created."
-        })
-        return response
-    except DBException:
-        raise HTTPException(status_code=500, detail="DB exception")
+async def post_task_with_undo(task: Task) -> TaskResponse:
+    command = CreateTaskCommand(task)
+    task_response = command_manager.execute_command(command)
+    requests.post("http://notifier-service-proxy:8000/notify", json={
+        "message": f"Task '{task.title}' has been created."
+    })
+    return task_response
+
+
 
 # Read tasks
 @router.get("/tasks")
@@ -50,6 +52,7 @@ async def get_tasks(
     except DBException:
         raise HTTPException(status_code=500, detail="DB exception")
 
+
 # Read a task by id
 @router.get("/tasks/{id}")
 async def get_task_by_id(
@@ -60,40 +63,68 @@ async def get_task_by_id(
     except DBItemNotFoundError:
         raise HTTPException(status_code=404, detail="Task not found")
 
-# Update a task
+
+# Update a task with undo/redo support
 @router.patch("/tasks/{id}")
-async def patch_task(
-    id: str,
-    task_patch: PartialTask,
-) -> TaskResponse:
+async def patch_task_with_undo(id: str, task_patch: PartialTask) -> TaskResponse:
     try:
-        task = db.update_task(id, task_patch)
+        command = UpdateTaskCommand(id, task_patch)
+        command_manager.execute_command(command)
         requests.post("http://notifier-service-proxy:8000/notify", json={
-            "message": f"Task '{task.task.title}' has been updated."
+            "message": f"Task '{id}' has been updated."
         })
-        return task
+        return {"message": f"Task '{id}' updated successfully"}
     except DBItemNotFoundError:
         raise HTTPException(status_code=404, detail="Task not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Delete a task
+
+# Delete a task with undo/redo support
 @router.delete("/tasks/{id}")
-async def delete_task(
-    id: str,
-) -> dict[str, str]:
+async def delete_task_with_undo(id: str) -> dict[str, str]:
     try:
-        task = db.read_task_by_id(id)
-        db.delete_task(id)
+        command = DeleteTaskCommand(id)
+        command_manager.execute_command(command)
         requests.post("http://notifier-service-proxy:8000/notify", json={
-            "message": f"Task '{task.task.title}' has been deleted."
+            "message": f"Task '{id}' has been deleted."
         })
         return {"message": "Task deleted successfully"}
     except DBItemNotFoundError:
         raise HTTPException(status_code=404, detail="Task not found")
     except DBException:
         raise HTTPException(status_code=500, detail="DB exception")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Undo the last operation
+@router.post("/undo")
+async def undo_last_operation():
+    try:
+        command_manager.undo()
+        requests.post("http://notifier-service-proxy:8000/notify", json={
+            "message": f"A change was undone."
+        })
+        return {"message": "Undo successful"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Redo the last undone operation
+@router.post("/redo")
+async def redo_last_operation():
+    try:
+        command_manager.redo()
+        requests.post("http://notifier-service-proxy:8000/notify", json={
+            "message": f"A change was redone."
+        })
+        return {"message": "Redo successful"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 app.include_router(router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
-

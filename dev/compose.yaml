@@ -3,30 +3,41 @@ name: "task-manager-dev"
 services:
   proxy01:
     extends:
-      file: ../compose.yaml
+      file: "../compose.yaml"
       service: proxy01
 
   frontend:
     extends:
-      file: ../compose.yaml
+      file: "../compose.yaml"
       service: frontend
 
   backend:
+    extends:
+      file: "../compose.yaml"
+      service: backend
     build:
       context: "../backend"
       dockerfile: "dev.Dockerfile"
     volumes:
       - "../backend/src:/app:ro"
-    networks:
-      internet: {}
-      proxy:
-        aliases:
-          - backend-proxy
 
   notifier-service:
     extends:
-      file: ../compose.yaml
+      file: "../compose.yaml"
       service: notifier-service
+
+  database:
+    extends:
+      file: "../compose.yaml"
+      service: database
+
+volumes:
+  db-data: {}
+  db-config: {}
+
+# secrets:
+#   backend_mongodb_connection_uri:
+#     file: "../secrets/backend/mongodb_connection_uri"
 
 networks:
   internet:

@@ -30,11 +30,16 @@ services:
 
   backend:
     build: "backend"
+    environment:
+      MONGODB_CONNECTION_URI: "mongodb://task-manager-admin:replace-this-password@database-service:27017/"
+    # secrets:
+    #   - backend_mongodb_connection_uri
     networks:
       internet: {}
       proxy:
         aliases:
           - backend-proxy
+      service: {}
 
   notifier-service:
     build: "notifier-service"
@@ -44,31 +49,30 @@ services:
         aliases:
           - notifier-service-proxy
 
-  service01:
-    build: "service01"
+  database:
+    image: mongo:8.0-noble
+    environment:
+      MONGO_INITDB_DATABASE: "task-manager"
+      MONGO_INITDB_ROOT_USERNAME: "task-manager-admin"
+      MONGO_INITDB_ROOT_PASSWORD: "replace-this-password"
+    volumes:
+      - db-data:/data/db
+      - db-config:/data/configdb
+    ports:
+      - "27018:27017"
     networks:
       internet: {}
-      proxy:
+      service:
         aliases:
-          - service01-proxy
-    profiles:
-      - disabled
+          - database-service
 
-  service02:
-    build: "service02"
-    networks:
-      - internet
-      - proxy
-    profiles:
-      - disabled
+volumes:
+  db-data: {}
+  db-config: {}
 
-  client01:
-    build: "client01"
-    networks:
-      - internet
-      - proxy
-    profiles:
-      - disabled
+# secrets:
+#   backend_mongodb_connection_uri:
+#     file: "../secrets/backend/mongodb_connection_uri"
 
 networks:
   internet:

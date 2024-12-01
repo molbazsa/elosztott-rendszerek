@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-
 import { connectToWebSocket } from './websocket';
+
+import TaskSorter from './TaskSorter';
+import SortByTitle from './strategies/SortByTitle';
+import SortByStatus from './strategies/SortByStatus';
 
 const API_URL = "http://localhost:9000/api/tasks";
 
@@ -27,6 +30,9 @@ function App() {
   const [editTaskId, setEditTaskId] = useState(null);
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
+  const [currentSortStrategy, setCurrentSortStrategy] = useState(''); // state for sorting strategy
+
+  const taskSorter = new TaskSorter(); // Create TaskSorter instance
 
   // Fetch tasks from the backend
   useEffect(() => {
@@ -40,6 +46,27 @@ function App() {
     }
     effect();
   }, []);
+
+  // Handle sorting change
+  const handleSortChange = (e) => {
+    const strategy = e.target.value;
+    setCurrentSortStrategy(strategy);
+
+    switch (strategy) {
+      case 'title':
+        taskSorter.setStrategy(new SortByTitle());
+        break;
+      case 'status':
+        taskSorter.setStrategy(new SortByStatus());
+        break;
+      default:
+        taskSorter.setStrategy(null);
+        break;
+    }
+
+    const sortedTasks = taskSorter.sort(tasks);
+    setTasks(sortedTasks);
+  };
 
   // Add a new task
   const handleAddTask = async () => {
@@ -156,7 +183,15 @@ function App() {
         <button onClick={handleUndo}>Undo</button>
         <button onClick={handleRedo}>Redo</button>
       </div>
-      <table border="1" style={{ width: '100%', textAlign: 'left', marginTop:"20px"}}>
+      <div>
+        <label>Sort By: </label>
+        <select value={currentSortStrategy} onChange={handleSortChange}>
+          <option value="">Select Sorting Option</option>
+          <option value="title">Title</option>
+          <option value="status">Status</option>
+        </select>
+      </div>
+      <table border="1" style={{ width: '100%', textAlign: 'left', marginTop: "20px" }}>
         <thead>
           <tr>
             <th>ID</th>

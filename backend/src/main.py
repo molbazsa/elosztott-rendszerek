@@ -67,17 +67,12 @@ async def get_task_by_id(
 # Update a task with undo/redo support
 @router.patch("/tasks/{id}")
 async def patch_task_with_undo(id: str, task_patch: PartialTask) -> TaskResponse:
-    try:
-        command = UpdateTaskCommand(id, task_patch)
-        command_manager.execute_command(command)
-        requests.post("http://notifier-service-proxy:8000/notify", json={
-            "message": f"Task '{id}' has been updated."
-        })
-        return {"message": f"Task '{id}' updated successfully"}
-    except DBItemNotFoundError:
-        raise HTTPException(status_code=404, detail="Task not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    command = UpdateTaskCommand(id, task_patch)
+    task_response = command_manager.execute_command(command)
+    requests.post("http://notifier-service-proxy:8000/notify", json={
+        "message": f"Task '{id}' has been updated."
+    })
+    return task_response
 
 
 # Delete a task with undo/redo support

@@ -25,16 +25,18 @@ function App() {
     status: 'to_do',
   });
   const [editTaskId, setEditTaskId] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
 
   // Fetch tasks from the backend
   useEffect(() => {
     async function effect() {
       connectToWebSocket(async () => {
         const fetchedTasks = await fetchTasks();
-        setTasks(fetchedTasks)
+        setTasks(fetchedTasks);
       });
       const fetchedTasks = await fetchTasks();
-      setTasks(fetchedTasks)
+      setTasks(fetchedTasks);
     }
     effect();
   }, []);
@@ -61,6 +63,8 @@ function App() {
         throw new Error("Failed to add task");
       }
       const data = await response.json();
+      setHistory([...history, tasks]);
+      setRedoStack([]);
       setTasks([...tasks, data]);
       setNewTask({ title: '', description: '', assigned_user_id: '', status: 'to_do' });
     } catch (error) {
@@ -91,6 +95,8 @@ function App() {
         throw new Error("Failed to update task");
       }
       const data = await response.json();
+      setHistory([...history, tasks]);
+      setRedoStack([]);
       setTasks(tasks.map((task) => (task.id === id ? data : task)));
       setNewTask({ title: '', description: '', assigned_user_id: '', status: 'to_do' });
       setEditTaskId(null);
@@ -109,16 +115,48 @@ function App() {
       if (!response.ok) {
         throw new Error("Failed to delete task");
       }
+      setHistory([...history, tasks]);
+      setRedoStack([]);
       setTasks(tasks.filter((task) => task.id !== id));
     } catch (error) {
       console.error("Error deleting task:", error);
     }
   };
 
+  // Undo last action
+  const handleUndo = () => {
+    if (history.length > 0) {
+      const lastState = history[history.length - 1];
+      setRedoStack([tasks, ...redoStack]);
+      setTasks(lastState);
+      setHistory(history.slice(0, -1));
+      console.log("Undo successful");
+    } else {
+      console.log("No actions to undo");
+    }
+  };
+
+  // Redo last undone action
+  const handleRedo = () => {
+    if (redoStack.length > 0) {
+      const nextState = redoStack[0];
+      setHistory([...history, tasks]);
+      setTasks(nextState);
+      setRedoStack(redoStack.slice(1));
+      console.log("Redo successful");
+    } else {
+      console.log("No actions to redo");
+    }
+  };
+
   return (
     <div style={{ padding: '20px' }}>
       <h1>Task Manager</h1>
-      <table border="1" style={{ width: '100%', textAlign: 'left' }}>
+      <div>
+        <button onClick={handleUndo}>Undo</button>
+        <button onClick={handleRedo}>Redo</button>
+      </div>
+      <table border="1" style={{ width: '100%', textAlign: 'left', marginTop:"20px"}}>
         <thead>
           <tr>
             <th>ID</th>
@@ -156,55 +194,54 @@ function App() {
         </tbody>
       </table>
       <div style={{ marginTop: '20px' }}>
-  <h2>{editTaskId ? "Edit Task" : "Add Task"}</h2>
-  <label>
-    Title:
-    <input
-      id="title-input"
-      type="text"
-      value={newTask.title}
-      onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-    />
-  </label>
-  <br />
-  <label>
-    Description:
-    <input
-      id="description-input"
-      type="text"
-      value={newTask.description}
-      onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-    />
-  </label>
-  <br />
-  <label>
-    Assigned User ID:
-    <input
-      type="text"
-      value={newTask.assigned_user_id}
-      onChange={(e) => setNewTask({ ...newTask, assigned_user_id: e.target.value })}
-    />
-  </label>
-  <br />
-  <label>
-    Status:
-    <select
-      value={newTask.status}
-      onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
-    >
-      <option value="to_do">To Do</option>
-      <option value="in_progress">In Progress</option>
-      <option value="done">Done</option>
-    </select>
-  </label>
-  <br />
-  {editTaskId ? (
-    <button onClick={() => handleUpdateTask(editTaskId)}>Update Task</button>
-  ) : (
-    <button onClick={handleAddTask}>Add Task</button>
-  )}
-</div>
-
+        <h2>{editTaskId ? "Edit Task" : "Add Task"}</h2>
+        <label>
+          Title:
+          <input
+            id="title-input"
+            type="text"
+            value={newTask.title}
+            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+          />
+        </label>
+        <br />
+        <label>
+          Description:
+          <input
+            id="description-input"
+            type="text"
+            value={newTask.description}
+            onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+          />
+        </label>
+        <br />
+        <label>
+          Assigned User ID:
+          <input
+            type="text"
+            value={newTask.assigned_user_id}
+            onChange={(e) => setNewTask({ ...newTask, assigned_user_id: e.target.value })}
+          />
+        </label>
+        <br />
+        <label>
+          Status:
+          <select
+            value={newTask.status}
+            onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
+          >
+            <option value="to_do">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="done">Done</option>
+          </select>
+        </label>
+        <br />
+        {editTaskId ? (
+          <button onClick={() => handleUpdateTask(editTaskId)}>Update Task</button>
+        ) : (
+          <button onClick={handleAddTask}>Add Task</button>
+        )}
+      </div>
     </div>
   );
 }

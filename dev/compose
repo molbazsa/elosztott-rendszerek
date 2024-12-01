@@ -2,6 +2,10 @@
 
 test "$(basename "$PWD")" = 'dev' && cd ..
 
-docker compose down \
-&& docker compose -f dev/compose.yaml up --build -d \
-&& docker compose -f dev/compose.yaml logs -f
+if [[ "$#" -gt 0 ]]; then
+    docker compose -f dev/compose.yaml "$@"
+else
+    docker compose down \
+    && docker compose -f dev/compose.yaml up --build -d \
+    && docker compose -f dev/compose.yaml logs -f
+fi

@@ -8,5 +8,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://backend-proxy:8080'
     },
+    watch: {
+      usePolling: true
+    }
   },
 })

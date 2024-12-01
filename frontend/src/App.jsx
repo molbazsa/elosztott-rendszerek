@@ -1,10 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { connectToWebSocket } from './websocket';
-
 import TaskSorter from './TaskSorter';
 import { SortByTitle, SortByStatus, SortByAssignedUser } from './strategies';
 
 const API_URL = "http://localhost:9000/api/tasks";
+
+// Base Component for Task Rendering
+class Task {
+  constructor(task) {
+    this.task = task;
+  }
+
+  render() {
+    return {
+      style: {},
+    };
+  }
+}
+
+// Decorator Base Class
+class TaskDecorator extends Task {
+  constructor(task) {
+    super(task);
+    this.task = task;
+  }
+
+  render() {
+    return this.task.render();
+  }
+}
+
+// Priority Task Decorator
+class PriorityTaskDecorator extends TaskDecorator {
+  render() {
+    const baseRender = super.render();
+    return {
+      ...baseRender,
+      style: { ...baseRender.style, border: '2px solid red' },
+    };
+  }
+}
+
+// Frozen Task Decorator
+class FrozenTaskDecorator extends TaskDecorator {
+  render() {
+    const baseRender = super.render();
+    return {
+      ...baseRender,
+      style: { ...baseRender.style, color: 'lightgrey' },
+    };
+  }
+}
 
 const fetchTasks = async (setTasks) => {
   try {
@@ -29,11 +75,10 @@ function App() {
   const [editTaskId, setEditTaskId] = useState(null);
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-  const [currentSortStrategy, setCurrentSortStrategy] = useState(''); // state for sorting strategy
+  const [currentSortStrategy, setCurrentSortStrategy] = useState('');
 
-  const taskSorter = new TaskSorter(); // Create TaskSorter instance
+  const taskSorter = new TaskSorter();
 
-  // Fetch tasks from the backend
   useEffect(() => {
     async function effect() {
       connectToWebSocket(async () => {
@@ -46,7 +91,6 @@ function App() {
     effect();
   }, []);
 
-  // Handle sorting change
   const handleSortChange = (e) => {
     const strategy = e.target.value;
     setCurrentSortStrategy(strategy);
@@ -70,16 +114,20 @@ function App() {
     setTasks(sortedTasks);
   };
 
-  // Add a new task
-  const handleAddTask = async () => {
-    if (!newTask.title.trim()) {
-      alert("Title is required!");
-      document.getElementById("title-input").focus();
-      return;
+  const decorateTask = (task) => {
+    let decoratedTask = new Task(task);
+    if (task.isPriority) {
+      decoratedTask = new PriorityTaskDecorator(decoratedTask);
     }
-    if (!newTask.description.trim()) {
-      alert("Description is required!");
-      document.getElementById("description-input").focus();
+    if (task.isFrozen) {
+      decoratedTask = new FrozenTaskDecorator(decoratedTask);
+    }
+    return decoratedTask;
+  };
+
+  const handleAddTask = async () => {
+    if (!newTask.title.trim() || !newTask.description.trim()) {
+      alert("Title and Description are required!");
       return;
     }
     try {
@@ -88,9 +136,8 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTask),
       });
-      if (!response.ok) {
-        throw new Error("Failed to add task");
-      }
+      if (!response.ok) throw new Error("Failed to add task");
+
       const data = await response.json();
       setHistory([...history, tasks]);
       setRedoStack([]);
@@ -102,16 +149,9 @@ function App() {
     }
   };
 
-  // Update an existing task
   const handleUpdateTask = async (id) => {
-    if (!newTask.title.trim()) {
-      alert("Title is required!");
-      document.getElementById("title-input").focus();
-      return;
-    }
-    if (!newTask.description.trim()) {
-      alert("Description is required!");
-      document.getElementById("description-input").focus();
+    if (!newTask.title.trim() || !newTask.description.trim()) {
+      alert("Title and Description are required!");
       return;
     }
     try {
@@ -120,9 +160,8 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTask),
       });
-      if (!response.ok) {
-        throw new Error("Failed to update task");
-      }
+      if (!response.ok) throw new Error("Failed to update task");
+
       const data = await response.json();
       setHistory([...history, tasks]);
       setRedoStack([]);
@@ -135,15 +174,11 @@ function App() {
     }
   };
 
-  // Delete a task
   const handleDeleteTask = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error("Failed to delete task");
-      }
+      const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error("Failed to delete task");
+
       setHistory([...history, tasks]);
       setRedoStack([]);
       setTasks(tasks.filter((task) => task.id !== id));
@@ -152,31 +187,80 @@ function App() {
     }
   };
 
-  // Undo last action
   const handleUndo = () => {
     if (history.length > 0) {
       const lastState = history[history.length - 1];
       setRedoStack([tasks, ...redoStack]);
       setTasks(lastState);
       setHistory(history.slice(0, -1));
-      console.log("Undo successful");
-    } else {
-      console.log("No actions to undo");
     }
   };
 
-  // Redo last undone action
   const handleRedo = () => {
     if (redoStack.length > 0) {
       const nextState = redoStack[0];
       setHistory([...history, tasks]);
       setTasks(nextState);
       setRedoStack(redoStack.slice(1));
-      console.log("Redo successful");
-    } else {
-      console.log("No actions to redo");
     }
   };
+
+  // Toggle task decoration (Priority/Frozen)
+  const handleTogglePriority = (id) => {
+    const updatedTasks = tasks.map((task) => {
+      if (task.id === id) {
+        return { ...task, isPriority: !task.isPriority };
+      }
+      return task;
+    });
+    setTasks(updatedTasks);
+  };
+
+  const handleToggleFrozen = (id) => {
+    const updatedTasks = tasks.map((task) => {
+      if (task.id === id) {
+        return { ...task, isFrozen: !task.isFrozen };
+      }
+      return task;
+    });
+    setTasks(updatedTasks);
+  };
+
+  function DecoratorButtons(task) {
+    let priorityButton;
+    let frozenButton;
+
+    if (task.isFrozen) {
+      priorityButton = <td></td>;
+    } else {
+      priorityButton = (
+        <td>
+          <button onClick={() => handleTogglePriority(task.id)} sytle={{ margin: "auto" }}>
+            {task.isPriority ? 'Remove Priority' : 'Mark as Priority'}
+          </button>
+        </td>
+      );
+    }
+
+    if (task.isPriority) {
+      frozenButton = <td></td>;
+    } else {
+      frozenButton = (
+        <td>
+          <button onClick={() => handleToggleFrozen(task.id)} sytle={{ margin: "auto" }}>
+            {task.isFrozen ? 'Unfreeze' : 'Freeze'}
+          </button>
+        </td>
+      );
+    }
+
+    return (
+      <>
+        {priorityButton}
+        {frozenButton}
+      </>
+    )
+  }
 
   return (
     <div style={{ padding: '20px' }}>
@@ -202,32 +286,38 @@ function App() {
             <th>Assigned User</th>
             <th>Status</th>
             <th>Actions</th>
+            <th>Priority</th>
+            <th>Frozen</th>
           </tr>
         </thead>
         <tbody>
-          {tasks.map((task) => (
-            <tr key={task.id}>
-              <td>{task.id}</td>
-              <td>{task.task.title}</td>
-              <td>{task.task.description}</td>
-              <td>{task.task.assigned_user_id}</td>
-              <td>{task.task.status}</td>
-              <td>
-                <button onClick={() => {
-                  setNewTask({
-                    title: task.task.title,
-                    description: task.task.description,
-                    assigned_user_id: task.task.assigned_user_id,
-                    status: task.task.status,
-                  });
-                  setEditTaskId(task.id);
-                }}>
-                  Edit
-                </button>
-                <button onClick={() => handleDeleteTask(task.id)}>Delete</button>
-              </td>
-            </tr>
-          ))}
+          {tasks.map((task) => {
+            const decoratedTask = decorateTask(task);
+            return (
+              <tr key={task.id} style={decoratedTask.render().style}>
+                <td>{task.id}</td>
+                <td>{task.task.title}</td>
+                <td>{task.task.description}</td>
+                <td>{task.task.assigned_user_id}</td>
+                <td>{task.task.status}</td>
+                <td>
+                  <button onClick={() => {
+                    setNewTask({
+                      title: task.title,
+                      description: task.description,
+                      assigned_user_id: task.assigned_user_id,
+                      status: task.status,
+                    });
+                    setEditTaskId(task.id);
+                  }}>
+                    Edit
+                  </button>
+                  <button onClick={() => handleDeleteTask(task.id)}>Delete</button>
+                </td>
+                {DecoratorButtons(task)}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       <div style={{ marginTop: '20px' }}>
@@ -235,7 +325,6 @@ function App() {
         <label>
           Title:
           <input
-            id="title-input"
             type="text"
             value={newTask.title}
             onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
@@ -245,7 +334,6 @@ function App() {
         <label>
           Description:
           <input
-            id="description-input"
             type="text"
             value={newTask.description}
             onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}

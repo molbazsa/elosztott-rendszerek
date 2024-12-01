@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { connectToWebSocket } from './websocket';
 
 import TaskSorter from './TaskSorter';
-import SortByTitle from './strategies/SortByTitle';
-import SortByStatus from './strategies/SortByStatus';
+import { SortByTitle, SortByStatus, SortByAssignedUser } from './strategies';
 
 const API_URL = "http://localhost:9000/api/tasks";
 
@@ -58,6 +57,9 @@ function App() {
         break;
       case 'status':
         taskSorter.setStrategy(new SortByStatus());
+        break;
+      case 'assigned_user':
+        taskSorter.setStrategy(new SortByAssignedUser());
         break;
       default:
         taskSorter.setStrategy(null);
@@ -186,8 +188,8 @@ function App() {
       <div>
         <label>Sort By: </label>
         <select value={currentSortStrategy} onChange={handleSortChange}>
-          <option value="">Select Sorting Option</option>
           <option value="title">Title</option>
+          <option value="assigned_user">Assigned user</option>
           <option value="status">Status</option>
         </select>
       </div>

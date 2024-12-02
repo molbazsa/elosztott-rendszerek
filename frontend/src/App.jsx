@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { connectToWebSocket } from './websocket';
 import TaskSorter from './TaskSorter';
+import { TaskAnalyticsVisitor } from './TaskVisitor';
 import { SortByTitle, SortByStatus, SortByAssignedUser } from './strategies';
 
 const API_URL = "http://localhost:9000/api/tasks";
@@ -8,7 +9,7 @@ const API_URL = "http://localhost:9000/api/tasks";
 // Base Component for Task Rendering
 class Task {
   constructor(task) {
-    this.task = task;
+    this.fields = task;
   }
 
   render() {
@@ -16,17 +17,16 @@ class Task {
       style: {},
     };
   }
+
+  accept(visitor) {
+    visitor.visit(this);
+  }
 }
 
 // Decorator Base Class
 class TaskDecorator extends Task {
   constructor(task) {
-    super(task);
-    this.task = task;
-  }
-
-  render() {
-    return this.task.render();
+    super(task.fields);
   }
 }
 
@@ -52,13 +52,43 @@ class FrozenTaskDecorator extends TaskDecorator {
   }
 }
 
-const fetchTasks = async (setTasks) => {
+const decorateTask = (task) => {
+  let decoratedTask = new Task(task);
+  if (task.isPriority) {
+    decoratedTask = new PriorityTaskDecorator(decoratedTask);
+  }
+  if (task.isFrozen) {
+    decoratedTask = new FrozenTaskDecorator(decoratedTask);
+  }
+  return decoratedTask;
+};
+
+// Analytics Function
+const generateAnalytics = (tasks) => {
+  console.log("generating analytics");
+  const visitor = new TaskAnalyticsVisitor();
+  tasks.forEach((task) => {
+    task.accept(visitor);
+  });
+  console.log(visitor.getAnalytics());
+  return visitor.getAnalytics();
+};
+
+const fetchTasks = async () => {
   try {
     const response = await fetch(API_URL);
     if (!response.ok) {
       throw new Error("Failed to fetch tasks");
     }
-    return await response.json();
+    const tasks = await response.json();
+    return tasks.map((task) => {
+      const fields = {
+        id: task.id,
+        ...task.task
+      }
+
+      return decorateTask(fields);
+    });
   } catch (error) {
     console.error("Error fetching tasks:", error);
   }
@@ -66,6 +96,7 @@ const fetchTasks = async (setTasks) => {
 
 function App() {
   const [tasks, setTasks] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -91,6 +122,10 @@ function App() {
     effect();
   }, []);
 
+  useEffect(() => {
+    setAnalytics(generateAnalytics(tasks));
+  }, [tasks]);
+
   const handleSortChange = (e) => {
     const strategy = e.target.value;
     setCurrentSortStrategy(strategy);
@@ -112,17 +147,6 @@ function App() {
 
     const sortedTasks = taskSorter.sort(tasks);
     setTasks(sortedTasks);
-  };
-
-  const decorateTask = (task) => {
-    let decoratedTask = new Task(task);
-    if (task.isPriority) {
-      decoratedTask = new PriorityTaskDecorator(decoratedTask);
-    }
-    if (task.isFrozen) {
-      decoratedTask = new FrozenTaskDecorator(decoratedTask);
-    }
-    return decoratedTask;
   };
 
   const handleAddTask = async () => {
@@ -205,11 +229,10 @@ function App() {
     }
   };
 
-  // Toggle task decoration (Priority/Frozen)
   const handleTogglePriority = (id) => {
     const updatedTasks = tasks.map((task) => {
-      if (task.id === id) {
-        return { ...task, isPriority: !task.isPriority };
+      if (task.fields.id === id) {
+        return decorateTask({ ...task.fields, isPriority: !task.fields.isPriority });
       }
       return task;
     });
@@ -218,8 +241,8 @@ function App() {
 
   const handleToggleFrozen = (id) => {
     const updatedTasks = tasks.map((task) => {
-      if (task.id === id) {
-        return { ...task, isFrozen: !task.isFrozen };
+      if (task.fields.id === id) {
+        return decorateTask({ ...task.fields, isFrozen: !task.fields.isFrozen });
       }
       return task;
     });
@@ -235,7 +258,7 @@ function App() {
     } else {
       priorityButton = (
         <td>
-          <button onClick={() => handleTogglePriority(task.id)} sytle={{ margin: "auto" }}>
+          <button onClick={() => handleTogglePriority(task.id)} style={{ margin: "auto" }}>
             {task.isPriority ? 'Remove Priority' : 'Mark as Priority'}
           </button>
         </td>
@@ -247,7 +270,7 @@ function App() {
     } else {
       frozenButton = (
         <td>
-          <button onClick={() => handleToggleFrozen(task.id)} sytle={{ margin: "auto" }}>
+          <button onClick={() => handleToggleFrozen(task.id)} style={{ margin: "auto" }}>
             {task.isFrozen ? 'Unfreeze' : 'Freeze'}
           </button>
         </td>
@@ -265,6 +288,15 @@ function App() {
   return (
     <div style={{ padding: '20px' }}>
       <h1>Task Manager</h1>
+      {analytics && <div>
+        <h2>Analytics</h2>
+        <p>Total Tasks: {analytics.taskCount}</p>
+        <p>Priority Tasks: {analytics.priority.priorityCount}</p>
+        <p>Frozen Tasks: {analytics.frozen.frozenCount}</p>
+        <p>Tasks to do: {analytics.status.to_do}</p>
+        <p>Tasks in progress: {analytics.status.in_progress}</p>
+        <p>Tasks done: {analytics.status.done}</p>
+      </div>}
       <div>
         <button onClick={handleUndo}>Undo</button>
         <button onClick={handleRedo}>Redo</button>
@@ -292,29 +324,28 @@ function App() {
         </thead>
         <tbody>
           {tasks.map((task) => {
-            const decoratedTask = decorateTask(task);
             return (
-              <tr key={task.id} style={decoratedTask.render().style}>
-                <td>{task.id}</td>
-                <td>{task.task.title}</td>
-                <td>{task.task.description}</td>
-                <td>{task.task.assigned_user_id}</td>
-                <td>{task.task.status}</td>
+              <tr key={task.fields.id} style={task.render().style}>
+                <td>{task.fields.id}</td>
+                <td>{task.fields.title}</td>
+                <td>{task.fields.description}</td>
+                <td>{task.fields.assigned_user_id}</td>
+                <td>{task.fields.status}</td>
                 <td>
                   <button onClick={() => {
                     setNewTask({
-                      title: task.title,
-                      description: task.description,
-                      assigned_user_id: task.assigned_user_id,
-                      status: task.status,
+                      title: task.fields.title,
+                      description: task.fields.description,
+                      assigned_user_id: task.fields.assigned_user_id,
+                      status: task.fields.status,
                     });
-                    setEditTaskId(task.id);
+                    setEditTaskId(task.fields.id);
                   }}>
                     Edit
                   </button>
-                  <button onClick={() => handleDeleteTask(task.id)}>Delete</button>
+                  <button onClick={() => handleDeleteTask(task.fields.id)}>Delete</button>
                 </td>
-                {DecoratorButtons(task)}
+                {DecoratorButtons(task.fields)}
               </tr>
             );
           })}

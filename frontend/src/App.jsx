@@ -106,9 +106,9 @@ function App() {
   const [editTaskId, setEditTaskId] = useState(null);
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-  const [currentSortStrategy, setCurrentSortStrategy] = useState('');
+  const [currentSortStrategy, setCurrentSortStrategy] = useState('title');
 
-  const taskSorter = new TaskSorter();
+  const taskSorter = new TaskSorter(new SortByTitle());
 
   useEffect(() => {
     async function effect() {
@@ -128,8 +128,7 @@ function App() {
 
   const handleSortChange = (e) => {
     const strategy = e.target.value;
-    setCurrentSortStrategy(strategy);
-
+    setCurrentSortStrategy(strategy)
     switch (strategy) {
       case 'title':
         taskSorter.setStrategy(new SortByTitle());
@@ -144,9 +143,7 @@ function App() {
         taskSorter.setStrategy(null);
         break;
     }
-
-    const sortedTasks = taskSorter.sort(tasks);
-    setTasks(sortedTasks);
+    setTasks(taskSorter.sort(tasks));
   };
 
   const handleAddTask = async () => {
@@ -165,7 +162,7 @@ function App() {
       const data = await response.json();
       setHistory([...history, tasks]);
       setRedoStack([]);
-      setTasks([...tasks, data]);
+      setTasks([...tasks, decorateTask(data)]);
       setNewTask({ title: '', description: '', assigned_user_id: '', status: 'to_do' });
     } catch (error) {
       console.error("Error adding task:", error);
@@ -189,7 +186,8 @@ function App() {
       const data = await response.json();
       setHistory([...history, tasks]);
       setRedoStack([]);
-      setTasks(tasks.map((task) => (task.id === id ? data : task)));
+      const updatedTasks = (tasks.map((task) => (task.id === id ? decorateTask(data) : task)));
+      setTasks(updatedTasks);
       setNewTask({ title: '', description: '', assigned_user_id: '', status: 'to_do' });
       setEditTaskId(null);
     } catch (error) {
@@ -205,7 +203,8 @@ function App() {
 
       setHistory([...history, tasks]);
       setRedoStack([]);
-      setTasks(tasks.filter((task) => task.id !== id));
+      const deletedTasks = tasks.filter((task) => task.id !== id);
+      setTasks(deletedTasks);
     } catch (error) {
       console.error("Error deleting task:", error);
     }

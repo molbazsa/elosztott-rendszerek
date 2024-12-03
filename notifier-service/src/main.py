@@ -35,7 +35,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# WebSocket endpoint
+# WebSocket endpoint (subscribe)
 @app.websocket("/ws/notify")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)

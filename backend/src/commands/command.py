@@ -11,8 +11,8 @@ class Command(ABC):
     def undo(self, db):
         pass
 
-
-class CreateTaskCommand(Command):
+# delete is the opposite of create
+class CreateTaskCommand(Command): 
     def __init__(self, task: Task):
         self.task = task
         self.task_id = None

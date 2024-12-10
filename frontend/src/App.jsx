@@ -1,67 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { connectToWebSocket } from './websocket';
+import Task from './Task';
+import { TaskPriorityDecorator, PriorityTask, FrozenTask } from './TaskPriority';
 import TaskSorter from './TaskSorter';
 import { TaskAnalyticsVisitor } from './TaskVisitor';
 import { SortByTitle, SortByStatus, SortByAssignedUser } from './strategies';
 
 const API_URL = "http://localhost:9000/api/tasks";
-
-// Base Component for Task Rendering
-class Task {
-  constructor(task) {
-    this.fields = task;
-  }
-
-  render() {
-    return {
-      style: {},
-    };
-  }
-
-  accept(visitor) {
-    visitor.visit(this);
-  }
-}
-
-// Decorator Base Class
-class TaskDecorator extends Task {
-  constructor(task) {
-    super(task.fields);
-  }
-}
-
-// Priority Task Decorator
-class PriorityTaskDecorator extends TaskDecorator {
-  render() {
-    const baseRender = super.render();
-    return {
-      ...baseRender,
-      style: { ...baseRender.style, border: '2px solid red' },
-    };
-  }
-}
-
-// Frozen Task Decorator
-class FrozenTaskDecorator extends TaskDecorator {
-  render() {
-    const baseRender = super.render();
-    return {
-      ...baseRender,
-      style: { ...baseRender.style, color: 'lightgrey' },
-    };
-  }
-}
-
-const decorateTask = (task) => {
-  let decoratedTask = new Task(task);
-  if (task.isPriority) {
-    decoratedTask = new PriorityTaskDecorator(decoratedTask);
-  }
-  if (task.isFrozen) {
-    decoratedTask = new FrozenTaskDecorator(decoratedTask);
-  }
-  return decoratedTask;
-};
 
 // Analytics Function
 const generateAnalytics = (tasks) => {
@@ -81,13 +26,8 @@ const fetchTasks = async () => {
       throw new Error("Failed to fetch tasks");
     }
     const tasks = await response.json();
-    return tasks.map((task) => {
-      const fields = {
-        id: task.id,
-        ...task.task
-      }
-
-      return decorateTask(fields);
+    return tasks.map((taskJSON) => {
+      return new Task(taskJSON);
     });
   } catch (error) {
     console.error("Error fetching tasks:", error);
@@ -119,6 +59,7 @@ function App() {
       const fetchedTasks = await fetchTasks();
       setTasks(fetchedTasks);
     }
+
     effect();
   }, []);
 
@@ -162,7 +103,7 @@ function App() {
       const data = await response.json();
       setHistory([...history, tasks]);
       setRedoStack([]);
-      setTasks([...tasks, decorateTask(data)]);
+      setTasks([...tasks, new Task(data)]);
       setNewTask({ title: '', description: '', assigned_user_id: '', status: 'to_do' });
     } catch (error) {
       console.error("Error adding task:", error);
@@ -186,7 +127,7 @@ function App() {
       const data = await response.json();
       setHistory([...history, tasks]);
       setRedoStack([]);
-      const updatedTasks = (tasks.map((task) => (task.id === id ? decorateTask(data) : task)));
+      const updatedTasks = (tasks.map((task) => (task.id === id ? new Task(data) : task)));
       setTasks(updatedTasks);
       setNewTask({ title: '', description: '', assigned_user_id: '', status: 'to_do' });
       setEditTaskId(null);
@@ -231,58 +172,42 @@ function App() {
   const handleTogglePriority = (id) => {
     const updatedTasks = tasks.map((task) => {
       if (task.fields.id === id) {
-        return decorateTask({ ...task.fields, isPriority: !task.fields.isPriority });
+        if (task instanceof PriorityTask) {
+          return task.undecorated();
+        }
+
+        if (task instanceof TaskPriorityDecorator) {
+          return new PriorityTask(task.undecorated());
+        }
+
+        return new PriorityTask(task);
       }
+
       return task;
     });
+
     setTasks(updatedTasks);
   };
 
   const handleToggleFrozen = (id) => {
     const updatedTasks = tasks.map((task) => {
       if (task.fields.id === id) {
-        return decorateTask({ ...task.fields, isFrozen: !task.fields.isFrozen });
+        if (task instanceof FrozenTask) {
+          return task.undecorated();
+        }
+
+        if (task instanceof TaskPriorityDecorator) {
+          return new FrozenTask(task.undecorated());
+        }
+
+        return new FrozenTask(task);
       }
+
       return task;
     });
+
     setTasks(updatedTasks);
   };
-
-  function DecoratorButtons(task) {
-    let priorityButton;
-    let frozenButton;
-
-    if (task.isFrozen) {
-      priorityButton = <td></td>;
-    } else {
-      priorityButton = (
-        <td>
-          <button onClick={() => handleTogglePriority(task.id)} style={{ margin: "auto" }}>
-            {task.isPriority ? 'Remove Priority' : 'Mark as Priority'}
-          </button>
-        </td>
-      );
-    }
-
-    if (task.isPriority) {
-      frozenButton = <td></td>;
-    } else {
-      frozenButton = (
-        <td>
-          <button onClick={() => handleToggleFrozen(task.id)} style={{ margin: "auto" }}>
-            {task.isFrozen ? 'Unfreeze' : 'Freeze'}
-          </button>
-        </td>
-      );
-    }
-
-    return (
-      <>
-        {priorityButton}
-        {frozenButton}
-      </>
-    )
-  }
 
   return (
     <div style={{ padding: '20px' }}>
@@ -344,7 +269,16 @@ function App() {
                   </button>
                   <button onClick={() => handleDeleteTask(task.fields.id)}>Delete</button>
                 </td>
-                {DecoratorButtons(task.fields)}
+                <td>
+                  <button onClick={() => handleTogglePriority(task.fields.id)} style={{ margin: "auto" }}>
+                    {task instanceof PriorityTask ? 'Remove Priority' : 'Mark as Priority'}
+                  </button>
+                </td>
+                <td>
+                  <button onClick={() => handleToggleFrozen(task.fields.id)} style={{ margin: "auto" }}>
+                    {task instanceof FrozenTask ? 'Unfreeze' : 'Freeze'}
+                  </button>
+                </td>
               </tr>
             );
           })}

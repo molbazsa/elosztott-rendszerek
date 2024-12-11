@@ -1,28 +1,49 @@
-const websocketUrl = "ws://localhost:9000/ws/notify";
+export function connectToWebSocket(websocketUrl, subscriber) {
+    return new Promise((resolve, reject) => {
+        const socket = new WebSocket(websocketUrl);
 
-let socket;
+        socket.onopen = () => {
+            console.log("WebSocket connected.");
+            resolve(socket);
+        };
 
-export function connectToWebSocket(onMessageCallback) {
-    socket = new WebSocket(websocketUrl);
+        socket.onmessage = (event) => {
+            const message = event.data;
+            console.log("Notification received:", message);
+            subscriber.update(message);
+        };
 
-    socket.onopen = () => {
-        console.log("WebSocket connected.");
-    };
+        socket.onclose = () => {
+            console.log("WebSocket disconnected. Attempting to reconnect...");
+            // Reconnect after 3 seconds
+            setTimeout(() => connectToWebSocket(websocketUrl, subscriber), 3000);
+        };
 
-    socket.onmessage = (event) => {
-        const message = event.data;
-        console.log("Notification received:", message);
-        if (onMessageCallback) {
-            onMessageCallback(message);
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            reject(error);
+        };
+    });
+}
+
+export class TaskSubscriber {
+    static WEBSOCKET_URL = "ws://localhost:9000/ws/notify";
+
+    constructor(onMessageCallback) {
+        this.onMessageCallback = onMessageCallback;
+        this.connected = false;
+    }
+
+    async subscribeWebsocket() {
+        if (!this.connected) {
+            await connectToWebSocket(TaskSubscriber.WEBSOCKET_URL, this)
+                .then(() => {
+                    this.connected = true;
+                });
         }
-    };
+    }
 
-    socket.onclose = () => {
-        console.log("WebSocket disconnected. Attempting to reconnect...");
-        setTimeout(() => connectToWebSocket(onMessageCallback), 3000); // Reconnect after 3 seconds
-    };
-
-    socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-    };
+    update(message) {
+        this.onMessageCallback(message);
+    }
 }

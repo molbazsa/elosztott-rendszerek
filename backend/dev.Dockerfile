@@ -1,7 +1,10 @@
 FROM python:3.12
 
-RUN groupadd -g 123000 dkruser
-RUN useradd -u 123000 -g 123000 --create-home --shell /bin/bash dkruser
+ARG DKR_UID=123000
+ARG DKR_GID=123999
+
+RUN groupadd -g ${DKR_GID} dkruser
+RUN useradd -l -u ${DKR_UID} -g ${DKR_GID} --create-home --shell /bin/bash dkruser
 USER dkruser
 
 WORKDIR /app

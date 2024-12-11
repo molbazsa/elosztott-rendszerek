@@ -1,3 +1,5 @@
+const API_URL = "http://localhost:9000";
+
 async function createTask() {
     const requestHeaders = new Headers();
     requestHeaders.append("Content-Type", "application/json");
@@ -15,7 +17,7 @@ async function createTask() {
         body: JSON.stringify(requestBody),
     };
 
-    return await fetch("http://localhost:9000/api/tasks", requestOptions)
+    return await fetch(`${API_URL}/api/tasks`, requestOptions)
         .then((res) => res.ok ? res.json() : res);
 }
 
@@ -35,22 +37,22 @@ async function createTaskPartial() {
         body: JSON.stringify(requestBody),
     };
 
-    return await fetch("http://localhost:9000/api/tasks", requestOptions)
+    return await fetch(`${API_URL}/api/tasks`, requestOptions)
         .then((res) => res.ok ? res.json() : res);
 }
 
 async function readTasks() {
-    return await fetch("http://localhost:9000/api/tasks")
+    return await fetch(`${API_URL}/api/tasks`)
         .then((res) => res.ok ? res.json() : res);
 }
 
 async function readTasks1To2() {
-    return await fetch("http://localhost:9000/api/tasks?offset=1&limit=2")
+    return await fetch(`${API_URL}/api/tasks?offset=1&limit=2`)
         .then((res) => res.ok ? res.json() : res);
 }
 
 async function readTaskById(id) {
-    return await fetch(`http://localhost:9000/api/tasks/${id}`)
+    return await fetch(`${API_URL}/api/tasks/${id}`)
         .then((res) => res.ok ? res.json() : res);
 }
 
@@ -70,7 +72,7 @@ async function updateTask(id) {
         body: JSON.stringify(requestBody),
     };
 
-    return await fetch(`http://localhost:9000/api/tasks/${id}`, requestOptions)
+    return await fetch(`${API_URL}/api/tasks/${id}`, requestOptions)
         .then((res) => res.ok ? res.json() : res);
 }
 
@@ -83,7 +85,7 @@ async function undo() {
         headers: requestHeaders,
     };
 
-    return await fetch("http://localhost:9000/api/undo", requestOptions)
+    return await fetch(`${API_URL}/api/undo`, requestOptions)
         .then((res) => res.ok ? res.json() : res);
 }
 
@@ -96,6 +98,6 @@ async function redo() {
         headers: requestHeaders,
     };
 
-    return await fetch("http://localhost:9000/api/redo", requestOptions)
+    return await fetch(`${API_URL}/api/redo`, requestOptions)
         .then((res) => res.ok ? res.json() : res);
 }

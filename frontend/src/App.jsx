@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { connectToWebSocket } from './websocket';
+import { TaskSubscriber } from './websocket';
 import Task from './Task';
 import { TaskPriorityDecorator, PriorityTask, FrozenTask } from './TaskPriority';
 import TaskSorter from './TaskSorter';
@@ -52,10 +52,11 @@ function App() {
 
   useEffect(() => {
     async function effect() {
-      connectToWebSocket(async () => {
+      const taskSubscriber = new TaskSubscriber(async () => {
         const fetchedTasks = await fetchTasks();
         setTasks(fetchedTasks);
       });
+      taskSubscriber.subscribeWebsocket();
       const fetchedTasks = await fetchTasks();
       setTasks(fetchedTasks);
     }

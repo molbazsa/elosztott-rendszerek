@@ -18,36 +18,36 @@ app.add_middleware(
 )
 
 # WebSocket manager
-class ConnectionManager:
+class TaskPublisher:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
 
-    async def connect(self, websocket: WebSocket):
+    async def subscribe(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
+    def unsubscribe(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
 
-    async def send_message(self, message: str):
+    async def notifySubscribers(self, message: str):
         for connection in self.active_connections:
             await connection.send_text(message)
 
-manager = ConnectionManager()
+taskPublisher = TaskPublisher()
 
 # WebSocket endpoint (subscribe)
 @app.websocket("/ws/notify")
 async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+    await taskPublisher.subscribe(websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        taskPublisher.unsubscribe(websocket)
 
 # REST API to receive notifications
 @app.post("/notify")
 async def notify_change(change: dict):
     message = f"Task Update: {change['message']}"
-    await manager.send_message(message)
+    await taskPublisher.notifySubscribers(message)
     return {"status": "Notification sent"}

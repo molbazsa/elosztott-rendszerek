@@ -34,6 +34,12 @@ const fetchTasks = async () => {
   }
 };
 
+const sortingStrategies = {
+  title: new SortByTitle(),
+  assignedUser: new SortByAssignedUser(),
+  status: new SortByStatus(),
+};
+
 function App() {
   const [tasks, setTasks] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -46,9 +52,20 @@ function App() {
   const [editTaskId, setEditTaskId] = useState(null);
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-  const [currentSortStrategy, setCurrentSortStrategy] = useState('title');
 
-  const taskSorter = new TaskSorter(new SortByTitle());
+  const [sortingType, setSortingType] = useState("title");
+  const [taskSorter, setTaskSorter] = useState(
+    new TaskSorter(sortingStrategies[sortingType])
+  );
+
+  useEffect(() => {
+    setTaskSorter(new TaskSorter(sortingStrategies[sortingType]));
+  }, [sortingType]);
+
+  const handleSortChange = (event) => {
+    const selectedSorting = event.target.value;
+    setSortingType(selectedSorting);
+  };
 
   useEffect(() => {
     async function effect() {
@@ -67,26 +84,6 @@ function App() {
   useEffect(() => {
     setAnalytics(generateAnalytics(tasks));
   }, [tasks]);
-
-  const handleSortChange = (e) => {
-    const strategy = e.target.value;
-    setCurrentSortStrategy(strategy)
-    switch (strategy) {
-      case 'title':
-        taskSorter.setStrategy(new SortByTitle());
-        break;
-      case 'status':
-        taskSorter.setStrategy(new SortByStatus());
-        break;
-      case 'assigned_user':
-        taskSorter.setStrategy(new SortByAssignedUser());
-        break;
-      default:
-        taskSorter.setStrategy(null);
-        break;
-    }
-    setTasks(taskSorter.sort(tasks));
-  };
 
   const handleAddTask = async () => {
     if (!newTask.title.trim() || !newTask.description.trim()) {
@@ -228,9 +225,9 @@ function App() {
       </div>
       <div>
         <label>Sort By: </label>
-        <select value={currentSortStrategy} onChange={handleSortChange}>
+        <select value={sortingType} onChange={handleSortChange}>
           <option value="title">Title</option>
-          <option value="assigned_user">Assigned user</option>
+          <option value="assignedUser">Assigned user</option>
           <option value="status">Status</option>
         </select>
       </div>
@@ -248,7 +245,7 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {tasks.map((task) => {
+          {taskSorter.sort(tasks).map((task) => {
             return (
               <tr key={task.fields.id} style={task.render().style}>
                 <td>{task.fields.id}</td>

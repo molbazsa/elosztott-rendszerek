@@ -221,7 +221,6 @@ class MockDB(DB):
             del self.tasks[id]
         else:
             raise DBItemNotFoundError("Task not found")
-{}
 
 
 class DBConnection(ABC):

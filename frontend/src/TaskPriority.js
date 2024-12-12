@@ -14,7 +14,7 @@ export class TaskPriorityDecorator extends TaskInterface {
   }
 
   accept(visitor) {
-    return this.decoratedTask.accept(visitor);
+    visitor.visit(this);
   }
 
   undecorated() {

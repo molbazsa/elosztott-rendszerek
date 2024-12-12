@@ -1,6 +1,12 @@
+import { PriorityTask, FrozenTask } from "./TaskPriority";
+
 export class TaskVisitor {
   visit(task) {
-    throw new Error("Method 'visit()' must be implemented.");
+    throw new Error("Method 'visit(task)' must be implemented.");
+  }
+
+  getAnalytics() {
+    throw new Error("Method 'getAnalytics()' must be implemented.");
   }
 }
 
@@ -32,7 +38,7 @@ export class PriorityTaskVisitor extends TaskVisitor {
   }
 
   visit(task) {
-    if (task.fields.isPriority) {
+    if (task instanceof PriorityTask) {
       this.priorityCount++;
     }
   }
@@ -51,7 +57,7 @@ export class FrozenTaskVisitor extends TaskVisitor {
   }
 
   visit(task) {
-    if (task.fields.isFrozen) {
+    if (task instanceof FrozenTask) {
       this.frozenCount++;
     }
   }
